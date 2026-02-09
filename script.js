@@ -1,5 +1,6 @@
 const main = document.querySelector("main");
-const voicesSelect = document.getElementById("voices");
+const textBox = document.getElementById("text-box");
+const voicesSelect = document.getElementById("voice");
 const textArea = document.getElementById("text");
 const readBtn = document.getElementById("read");
 const toggleBtn = document.getElementById("toggle");
@@ -56,8 +57,14 @@ const data = [
   },
 ];
 
+let voices = [];
 data.forEach(createBox);
+populateVoiceList();
+if (speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = populateVoiceList;
+}
 
+// Functions
 function createBox(item) {
   const box = document.createElement("div");
   box.classList.add("box");
@@ -68,3 +75,52 @@ function createBox(item) {
   `;
   main.append(box);
 }
+
+function populateVoiceList() {
+  voices = speechSynthesis.getVoices();
+
+  for (const voice of voices) {
+    const option = document.createElement("option");
+    option.textContent = `${voice.name} (${voice.lang})`;
+
+    if (voice.default) {
+      option.textContent += " — DEFAULT";
+    }
+
+    option.setAttribute("data-lang", voice.lang);
+    option.setAttribute("data-name", voice.name);
+    voicesSelect.append(option);
+  }
+}
+
+function readText(text) {
+  const voiceName = voicesSelect.selectedOptions[0].getAttribute("data-name");
+  if (text === "") return;
+  const utterThis = new SpeechSynthesisUtterance(text);
+  for (const voice of voices) {
+    if (voice.name === voiceName) {
+      utterThis.voice = voice;
+    }
+  }
+  speechSynthesis.speak(utterThis);
+  return utterThis;
+}
+
+// Event Listeners
+toggleBtn.addEventListener("click", () => {
+  textBox.classList.toggle("show");
+});
+closeBtn.addEventListener("click", () => {
+  textBox.classList.remove("show");
+});
+readBtn.addEventListener("click", () => {
+  const text = textArea.value;
+  readText(text);
+});
+main.addEventListener("click", (e) => {
+  const box = e.target.closest(".box");
+  const text = box.querySelector(".info").textContent;
+  box.classList.add("active");
+  const utterance = readText(text);
+  utterance.addEventListener("end", () => box.classList.remove("active"));
+});
